@@ -49,7 +49,7 @@ func testNewWalletManager() *WalletManager {
 }
 
 func TestWalletManager_GetAssetBalanceAds(t *testing.T) {
-	balance, err := tw.GetAssetBalanceAds("MACb69ee3df7a9XFVAIE1AHElAJQFA")
+	balance, err := tw.GetAssetBalanceAds("MACx6150b0728bVdQDOAABCYFAUN1U")
 	if err != nil {
 		t.Errorf("GetAssetBalanceAds failed unexpected error: %v\n", err)
 		return
@@ -88,16 +88,37 @@ func TestWalletManager_CreateNewWallet(t *testing.T) {
 	log.Infof("keyPath: %s", filePath)
 }
 
+func TestWalletManager_GetWalletInfo(t *testing.T) {
+	keyFile := filepath.Join(tw.Config.DataDir, "key", "john-MACx6150b0728bVdQDOAABCYFAUN1U.key")
+	wallet, err := tw.GetWalletInfo(keyFile, "1234qwer")
+	if err != nil {
+		t.Errorf("GetWalletInfo failed unexpected error: %v\n", err)
+		return
+	}
+	log.Infof("wallet: %+v", wallet)
+}
+
 func TestWalletManager_SendTransaction(t *testing.T) {
 
 	rawTx := &openwallet.RawTransaction{
+		Coin: openwallet.Coin{
+			Symbol:     "MAT",
+			IsContract: false,
+		},
 		To: map[string]string{"MACh0c0b0a979bLAgVAIQVWdACDUgA": "0.01"},
 	}
 
 	rawTx.SetExtParam("memo", "john")
 
 	keyFile := filepath.Join(tw.Config.DataDir, "key", "hello-MACcaf763e4780EMgCOUFAHUFCRRgA.key")
-	tx, err := tw.SendTransaction(keyFile, "1234qwer", rawTx)
+
+	wallet, err := tw.GetWalletInfo(keyFile, "1234qwer")
+	if err != nil {
+		t.Errorf("SendTransaction failed unexpected error: %v\n", err)
+		return
+	}
+
+	tx, err := tw.SendTransaction(wallet, "1234qwer", rawTx)
 	if err != nil {
 		t.Errorf("SendTransaction failed unexpected error: %v\n", err)
 		return

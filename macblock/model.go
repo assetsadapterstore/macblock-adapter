@@ -28,6 +28,7 @@ type MACWallet struct {
 	Address       string `json:"NewTokenAddress" `
 	WalletKey     string `json:"WalletKey"`
 	MnemonicWords string `json:"MnemonicWords"`
+	MtSign        string `json:"Mtsign"`
 }
 
 // 加密后的MACWallet的JSON结构
@@ -39,8 +40,9 @@ type encryptedWalletJSON struct {
 
 // 加密内容的JSON结构
 type cryptoJSON struct {
-	CipherKey   string `json:"cipherKey"`
-	CipherWords string `json:"cipherWords"`
+	CipherKey    string `json:"cipherKey"`
+	CipherWords  string `json:"cipherWords"`
+	CipherMtSign string `json:"cipherMtSign"`
 }
 
 type Block struct {
@@ -113,7 +115,6 @@ func NewTransaction(json *gjson.Result) *Transaction {
 
 	return &obj
 }
-
 
 //UnscanRecords 扫描失败的区块及交易
 type UnscanRecord struct {

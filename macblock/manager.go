@@ -55,9 +55,7 @@ type WalletManager struct {
 func NewWalletManager() *WalletManager {
 	wm := WalletManager{}
 	wm.Config = NewConfig()
-	//wm.Blockscanner = NewBEAMBlockScanner(&wm)
-	//wm.Decoder = NewAddressDecoder(&wm)
-	//wm.TxDecoder = NewTransactionDecoder(&wm)
+	wm.Blockscanner = NewMACBlockScanner(&wm)
 	wm.Log = log.NewOWLogger(wm.Symbol())
 	return &wm
 }
@@ -79,6 +77,7 @@ func (wm *WalletManager) GetAssetBalanceAds(address string) (decimal.Decimal, er
 	return decimal.NewFromString(balance)
 }
 
+// CreateNewAddress 创建地址
 func (wm *WalletManager) CreateNewAddress(password string) (string, error) {
 
 	pwdencrypt := wm.Macpwdencode(password)
@@ -133,6 +132,7 @@ func (wm *WalletManager) GetMnemonicWords2(address, walletKey, password string) 
 	return mnemonicWords, nil
 }
 
+// CreateNewWallet 创建新钱包
 func (wm *WalletManager) CreateNewWallet(keydir, alias, password string) (*MACWallet, string, error) {
 	address, err := wm.CreateNewAddress(password)
 	if err != nil {
@@ -146,11 +146,16 @@ func (wm *WalletManager) CreateNewWallet(keydir, alias, password string) (*MACWa
 	if err != nil {
 		return nil, "", err
 	}
+	mtsign, err := wm.GetMtsign2(address, walletKey, mnemonicWords, password)
+	if err != nil {
+		return nil, "", err
+	}
 	wallet := &MACWallet{
 		Alias:         alias,
 		Address:       address,
 		WalletKey:     walletKey,
 		MnemonicWords: mnemonicWords,
+		MtSign:        mtsign,
 	}
 
 	//加密保存到文件夹
@@ -182,9 +187,15 @@ func (wm *WalletManager) EncryptWallet(wallet *MACWallet, password string) ([]by
 		return nil, err
 	}
 
+	cipherMtSign, err := crypto.AESEncrypt([]byte(wallet.MtSign), passwordHash)
+	if err != nil {
+		return nil, err
+	}
+
 	cryptoStruct := cryptoJSON{
-		CipherKey:   hex.EncodeToString(cipherKey),
-		CipherWords: hex.EncodeToString(cipherWords),
+		CipherKey:    hex.EncodeToString(cipherKey),
+		CipherWords:  hex.EncodeToString(cipherWords),
+		CipherMtSign: hex.EncodeToString(cipherMtSign),
 	}
 
 	encryptedWallet := encryptedWalletJSON{
@@ -193,6 +204,22 @@ func (wm *WalletManager) EncryptWallet(wallet *MACWallet, password string) ([]by
 		Crypto:  cryptoStruct,
 	}
 	return json.MarshalIndent(encryptedWallet, "", "\t")
+}
+
+// GetWalletInfo 通过密钥文件解析钱包
+func (wm *WalletManager) GetWalletInfo(keyFile, password string) (*MACWallet, error) {
+
+	keyjson, err := ioutil.ReadFile(keyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	wallet, err := wm.DecryptWallet(keyjson, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return wallet, nil
 }
 
 func (wm *WalletManager) DecryptWallet(walletJson []byte, password string) (*MACWallet, error) {
@@ -213,6 +240,11 @@ func (wm *WalletManager) DecryptWallet(walletJson []byte, password string) (*MAC
 		return nil, err
 	}
 
+	cm, err := hex.DecodeString(k.Crypto.CipherMtSign)
+	if err != nil {
+		return nil, err
+	}
+
 	walletKey, err := crypto.AESDecrypt(ck, passwordHash)
 	if err != nil {
 		return nil, err
@@ -223,23 +255,29 @@ func (wm *WalletManager) DecryptWallet(walletJson []byte, password string) (*MAC
 		return nil, err
 	}
 
+	mtSign, err := crypto.AESDecrypt(cm, passwordHash)
+	if err != nil {
+		return nil, err
+	}
+
 	wallet := &MACWallet{
 		Alias:         k.Alias,
 		Address:       k.Address,
 		WalletKey:     string(walletKey),
 		MnemonicWords: string(mnemonicWords),
+		MtSign:        string(mtSign),
 	}
 
 	return wallet, nil
 }
 
-func (wm *WalletManager) GetMtsign2(wallet *MACWallet, password string) (string, error) {
+func (wm *WalletManager) GetMtsign2(token, walletKey, mnemonicWords, password string) (string, error) {
 
-	sign := wm.SignBorn(wallet.WalletKey, wallet.MnemonicWords, password)
+	sign := wm.SignBorn(walletKey, mnemonicWords, password)
 
 	param := req.Param{
 		"action": "GetMtsign2",
-		"token":  wallet.Address,
+		"token":  token,
 		"sign":   sign,
 	}
 
@@ -274,7 +312,7 @@ func (wm *WalletManager) AssetTransferMN2(fromtoken, totoken, amount, note, mtsi
 	return txid, nil
 }
 
-func (wm *WalletManager) SendTransaction(keyFile, password string, rawTx *openwallet.RawTransaction) (*openwallet.Transaction, error) {
+func (wm *WalletManager) SendTransaction(wallet *MACWallet, password string, rawTx *openwallet.RawTransaction) (*openwallet.Transaction, error) {
 
 	var (
 		fromtoken string
@@ -282,21 +320,6 @@ func (wm *WalletManager) SendTransaction(keyFile, password string, rawTx *openwa
 		toamount  string
 		note      string
 	)
-
-	keyjson, err := ioutil.ReadFile(keyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	wallet, err := wm.DecryptWallet(keyjson, password)
-	if err != nil {
-		return nil, err
-	}
-
-	mtsign, err := wm.GetMtsign2(wallet, password)
-	if err != nil {
-		return nil, err
-	}
 
 	fromtoken = wallet.Address
 
@@ -307,7 +330,6 @@ func (wm *WalletManager) SendTransaction(keyFile, password string, rawTx *openwa
 
 	note = rawTx.GetExtParam().Get("memo").String()
 
-
 	balance, err := wm.GetAssetBalanceAds(fromtoken)
 	if err != nil {
 		return nil, err
@@ -316,11 +338,10 @@ func (wm *WalletManager) SendTransaction(keyFile, password string, rawTx *openwa
 	totalAmount, _ := decimal.NewFromString(toamount)
 
 	if balance.LessThan(totalAmount) {
-		return nil, openwallet.Errorf(openwallet.ErrInsufficientBalanceOfAddress,"address's balance is not enough")
+		return nil, openwallet.Errorf(openwallet.ErrInsufficientBalanceOfAddress, "address's balance is not enough")
 	}
 
-
-	txid, err := wm.AssetTransferMN2(fromtoken, totoken, toamount, note, mtsign, password)
+	txid, err := wm.AssetTransferMN2(fromtoken, totoken, toamount, note, wallet.MtSign, password)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +361,6 @@ func (wm *WalletManager) SendTransaction(keyFile, password string, rawTx *openwa
 		Coin:       rawTx.Coin,
 		TxID:       rawTx.TxID,
 		Decimal:    decimals,
-		AccountID:  rawTx.Account.AccountID,
 		Fees:       "0",
 		SubmitTime: time.Now().Unix(),
 		ExtParam:   rawTx.ExtParam,
@@ -405,7 +425,6 @@ func writeKeyFile(file string, content []byte) error {
 	return os.Rename(f.Name(), file)
 }
 
-
 func (wm *WalletManager) GetBlockHeight() (uint64, error) {
 
 	param := req.Param{
@@ -420,7 +439,6 @@ func (wm *WalletManager) GetBlockHeight() (uint64, error) {
 	height := result.Get("BlockHeight").Uint()
 	return height, nil
 }
-
 
 func (wm *WalletManager) GetTransactionRecordHight(height uint64) (*Block, error) {
 
@@ -438,12 +456,11 @@ func (wm *WalletManager) GetTransactionRecordHight(height uint64) (*Block, error
 	return block, nil
 }
 
-
 func (wm *WalletManager) GetTransactionRecordHash(hash string) (*Transaction, error) {
 
 	param := req.Param{
 		"action": "GetTransactionRecordHash",
-		"hash": hash,
+		"hash":   hash,
 	}
 
 	result, err := wm.client.Call(param)

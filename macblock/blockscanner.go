@@ -31,7 +31,6 @@ type MACBlockScanner struct {
 	CurrentBlockHeight   uint64         //当前区块高度
 	extractingCH         chan struct{}  //扫描工作令牌
 	wm                   *WalletManager //钱包管理者
-	IsScanMemPool        bool           //是否扫描交易池
 	RescanLastBlockCount uint64         //重扫上N个区块数量
 }
 
@@ -58,7 +57,6 @@ func NewMACBlockScanner(wm *WalletManager) *MACBlockScanner {
 
 	bs.extractingCH = make(chan struct{}, maxExtractingSize)
 	bs.wm = wm
-	bs.IsScanMemPool = true
 	bs.RescanLastBlockCount = 0
 
 	// set task

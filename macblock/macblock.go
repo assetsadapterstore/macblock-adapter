@@ -46,12 +46,12 @@ func (wm *WalletManager) Decimal() int32 {
 
 //AddressDecode 地址解析器
 func (wm *WalletManager) GetAddressDecode() openwallet.AddressDecoder {
-	return wm.Decoder
+	return nil
 }
 
 //TransactionDecoder 交易单解析器
 func (wm *WalletManager) GetTransactionDecoder() openwallet.TransactionDecoder {
-	return wm.TxDecoder
+	return nil
 }
 
 //GetBlockScanner 获取区块链
@@ -93,5 +93,5 @@ func (wm *WalletManager) GetAssetsLogger() *log.OWLogger {
 
 //GetSmartContractDecoder 获取智能合约解析器
 func (wm *WalletManager) GetSmartContractDecoder() openwallet.SmartContractDecoder {
-	return wm.ContractDecoder
+	return nil
 }
