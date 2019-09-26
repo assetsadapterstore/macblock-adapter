@@ -23,7 +23,7 @@ import (
 func TestMACBlockScanner_GetBalanceByAddress(t *testing.T) {
 
 	addrs := []string{
-		"MACcaf763e4780EMgCOUFAHUFCRRgA",
+		"MACx6150b0728bVdQDOAABCYFAUN1U",
 	}
 
 	balances, err := tw.GetBlockScanner().GetBalanceByAddress(addrs...)

@@ -55,8 +55,8 @@ func TestSubscribeAddress_MAT(t *testing.T) {
 		endRunning = make(chan bool, 1)
 		symbol     = "MAT"
 		addrs      = map[string]string{
-			"MACcaf763e4780EMgCOUFAHUFCRRgA": "receiver",
-			"MACh0c0b0a979bLAgVAIQVWdACDUgA": "receiver",
+			"MACx6150b0728bVdQDOAABCYFAUN1U": "sender",
+			"MACja4a7fbe76dBwVUBYFAWZVUWNlA": "receiver",
 		}
 	)
 
