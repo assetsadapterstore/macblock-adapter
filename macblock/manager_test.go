@@ -105,7 +105,7 @@ func TestWalletManager_SendTransaction(t *testing.T) {
 			Symbol:     "MAT",
 			IsContract: false,
 		},
-		To: map[string]string{"MACja4a7fbe76dBwVUBYFAWZVUWNlA": "0.01"},
+		To: map[string]string{"MACcbc6a02cab9F8ACJYVUJIQBAUlV": "0.01"},
 	}
 
 	rawTx.SetExtParam("memo", "john")

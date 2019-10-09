@@ -545,6 +545,7 @@ func (bs *MACBlockScanner) extractTransaction(trx *Transaction, result *ExtractR
 			Status:      status,
 			Reason:      reason,
 			ConfirmTime: trx.Time,
+			IsMemo:      true,
 		}
 		wxID := openwallet.GenTransactionWxID(tx)
 		tx.WxID = wxID
